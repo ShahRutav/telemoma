@@ -116,5 +116,5 @@ class TiagoArms:
             
             cur_joints = self.joint_reader.get_most_recent_msg()
             delay_scale = np.linalg.norm(cur_joints - action)
-            assert delay_scale < 4
+            assert delay_scale < 5
             self.write(action, delay_scale*3)

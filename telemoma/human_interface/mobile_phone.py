@@ -1,4 +1,5 @@
 import socket
+from typing import Dict, Optional
 import numpy as np
 
 import time
@@ -94,7 +95,7 @@ class iPhoneReader:
         return pose_dict
 
 class MobilePhonePolicy(BaseTeleopInterface):
-    def __init__(self, address: str, port: dict[str, int] = None) -> None:
+    def __init__(self, address: str, port: Optional[Dict[str, int]] = None) -> None:
 
         self.position = None
         self.rotation = None
@@ -170,7 +171,7 @@ class MobilePhonePolicy(BaseTeleopInterface):
                 self._state[side]['pos'] = pos @ self.coordinate_change.T * self.position_gain
                 self._state[side]['quat'] = np.r_[quat[:3] @ self.coordinate_change.T, quat[3]]
 
-    def _calculate_action(self, robot_obs: dict[str, np.ndarray], side: str) -> np.ndarray:
+    def _calculate_action(self, robot_obs: Dict[str, np.ndarray], side: str) -> np.ndarray:
         # Read Sensor #
         phone_state = copy.deepcopy(self._state[side])
         self._state[side]["gripper_toggle"] = False

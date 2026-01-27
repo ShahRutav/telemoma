@@ -1,4 +1,5 @@
 import time
+from typing import Dict
 import numpy as np
 from telemoma.human_interface.teleop_core import BaseTeleopInterface, TeleopAction, TeleopObservation
 from telemoma.utils.general_utils import run_threaded_command
@@ -162,7 +163,7 @@ class OculusPolicy(BaseTeleopInterface):
             gripper_vel = gripper_vel * self.max_gripper_vel / gripper_vel_norm
         return lin_vel, rot_vel, gripper_vel
 
-    def _calculate_action(self, robot_obs: dict[str, np.ndarray], arm: str) -> np.ndarray:
+    def _calculate_action(self, robot_obs: Dict[str, np.ndarray], arm: str) -> np.ndarray:
         # Read Sensor #
         if self.update_sensor[arm]:
             self._process_reading(arm)
@@ -207,6 +208,8 @@ class OculusPolicy(BaseTeleopInterface):
         action.extra['buttons'] = buttons
         # arm command
         for arm in ['right', 'left']:
+            if arm not in obs:
+                continue
             eef_data = obs[arm]
             if eef_data is None:
                 continue

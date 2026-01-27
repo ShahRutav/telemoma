@@ -1,3 +1,5 @@
+from typing import Dict
+
 from telemoma.human_interface import INTERFACE_MAP
 from telemoma.human_interface.teleop_core import BaseTeleopInterface, TeleopAction, TeleopObservation
 from telemoma.utils.general_utils import AttrDict
@@ -16,7 +18,7 @@ class TeleopPolicy:
             if controller is not None:
                 assert controller in INTERFACE_MAP, 'Other controllers not implemented.'
 
-        self.interfaces: dict[str, BaseTeleopInterface] = {}
+        self.interfaces: Dict[str, BaseTeleopInterface] = {}
         for part in self.controllers:
             if (self.controllers[part] is not None) and (self.controllers[part] not in self.interfaces):
                 self.interfaces[self.controllers[part]] = INTERFACE_MAP[self.controllers[part]](**config.interface_kwargs[self.controllers[part]])

@@ -1,0 +1,2 @@
+# Local telemoma package initialization.
+
