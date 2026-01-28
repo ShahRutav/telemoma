@@ -47,6 +47,14 @@ class TiagoGym(gym.Env):
 
         self.steps = 0
 
+    def sleep_if_needed(self):
+        self.end_time = time.time()
+        if self.start_time is not None:
+            # print('Idle time:', 1/self.frequency - (self.end_time-self.start_time))
+            rospy.sleep(max(0., 1/self.frequency - (self.end_time-self.start_time)))
+        self.start_time = time.time()
+        return 1/self.frequency - (self.end_time-self.start_time)
+
     @property
     def observation_space(self):
         ob_space = OrderedDict()

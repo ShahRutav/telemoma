@@ -81,7 +81,10 @@ class Tiago:
             self.torso.step(action['torso'])
 
     def reset(self, reset_arms=True):
-        for side in ['left']:
+        for side in ['left', 'right']:
+            if not reset_arms or side not in self.arms.keys() or not self.arms[side].arm_enabled:
+                print(f'not resetting {side}...{time.time()}')
+                continue
             print(f'resetting {side}...{time.time()}')
             self.arms[side].reset(self.reset_pose[side][:-1])
             rospy.sleep(1)

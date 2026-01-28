@@ -1,5 +1,6 @@
 import argparse
 import copy
+import time
 import os
 import select
 import sys
@@ -9,8 +10,9 @@ import numpy as np
 import rospy
 from importlib.machinery import SourceFileLoader
 from termcolor import colored
-
+from telemoma.human_interface.teleop_core import TeleopAction
 from telemoma.human_interface.teleop_policy import TeleopPolicy
+
 from telemoma.robot_interface.tiago.tiago_wrapper import TiagoWrapper
 from telemoma.utils.general_utils import AttrDict
 from telemoma.configs.only_keyboard import teleop_config as default_teleop_config
@@ -66,9 +68,9 @@ class TranslationExplorationPolicy:
         self.target_y_neg = self.init_y - self.target_delta_value
 
         if self.velocity_mode == "random":
-            self.velocity = float(np.random.uniform(0.75, 1.0))
+            self.velocity = float(np.random.uniform(0.8, 1.0))
         elif self.velocity_mode == "fixed":
-            self.velocity = 0.85
+            self.velocity = 0.9
         else:
             raise ValueError(f"Invalid velocity mode: {self.velocity_mode}")
 
@@ -126,6 +128,10 @@ class TranslationExplorationPolicy:
         print(   f"base_action: {base_action}")
         return base_action
 
+def is_zero_action(flat_action: np.ndarray) -> bool:
+    # if he first 6 elements are all zero, and the last 3 elements are all zero, return True
+    # set the tolerance to 1e-4
+    return np.all(np.abs(flat_action[:6]) < 1e-4) and np.all(np.abs(flat_action[7:]) < 1e-4)
 
 def clear_input_buffer():
     while select.select([sys.stdin], [], [], 0)[0]:
@@ -172,11 +178,13 @@ def unflatten_action(action, env) -> dict:
     """
     Convert a flat action vector back into a TeleopAction.
     """
-    assert len(action) == 11
-    return TeleopAction(
-        left=action[:8],
-        base=action[-3],
-    )
+    assert len(action) == 10, f"Action length mismatch: {action.shape} != 10"
+    # get the default action from the env
+    # default_action = env.get_default_action()
+    default_action = TeleopAction()
+    default_action.left = action[:7]
+    default_action.base = action[7:]
+    return default_action
 
 def collect_trajectory(teleop_cfg: AttrDict, use_exploration: bool) -> dict:
     """
@@ -200,7 +208,8 @@ def collect_trajectory(teleop_cfg: AttrDict, use_exploration: bool) -> dict:
         left_gripper_type="pal",
     )
 
-    obs = env.reset()
+    time.sleep(3) # wait for the robot to reset
+    obs = env.reset(reset_arms=True)
 
     teleop = TeleopPolicy(teleop_cfg)
     teleop.start()
@@ -268,8 +277,16 @@ def collect_trajectory(teleop_cfg: AttrDict, use_exploration: bool) -> dict:
         done = bool(done_env or buttons.get("A", False))
         cancel = bool(buttons.get("B", False))
 
+        flat_action = flatten_action(action, env)
+        if is_zero_action(flat_action):
+            env.sleep_if_needed()
+            if cancel:
+                shutdown_helper()
+                return None
+            continue
+
         # Log transition
-        traj["actions"].append(flatten_action(action, env))
+        traj["actions"].append(flat_action)
         # policy_mode: 1 if X button is pressed at this step, else 0
         traj["policy_mode"].append(0)
 
@@ -331,7 +348,6 @@ def save_trajectory_to_hdf5(traj: dict, save_dir: str) -> str:
 
         obs_grp = ep_grp.create_group("obs")
         for k, v in traj["obs"].items():
-            print(   f"k: {k}, v: {v}")
             obs_grp.create_dataset(k, data=v, compression="gzip")
 
         ep_grp.attrs["num_samples"] = traj["actions"].shape[0]
